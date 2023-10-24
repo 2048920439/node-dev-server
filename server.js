@@ -32,6 +32,13 @@ function openService(config) {
         // 启用gzip
         app.use(compression());
 
+        app.use((req, res, next) => {
+            const date = dayjs().format('MM-DD HH:mm:ss');
+            console.log(`[${date}]  ${req.hostname}:${port}${req.url}`);
+            console.log('');
+            next();
+        });
+
         // 使用代理
         for (let [key, config] of Object.entries(proxy)) {
             const proxyMiddleware = createProxyMiddleware({
@@ -39,16 +46,6 @@ function openService(config) {
                 logLevel: 'error',
                 onProxyRes: (proxyRes, req) => {
                     proxyRes.headers['X-Real-Url'] = config.target + req.originalUrl;
-                },
-                onError: (err, req, res) => {
-                    const errInfo = {
-                        ip: req.ip,
-                        url: req.url,
-                        host: req.headers.host,
-                        date: dayjs().format('YYYY-MM-DD hh:mm:ss'),
-                    };
-                    console.log('代理失败:', errInfo);
-                    res.status(500).send('Proxy Error');
                 },
             });
             // noinspection JSCheckFunctionSignatures
@@ -93,7 +90,7 @@ function getIpv4() {
 }
 
 // 寻找可用端口
-async function findAvailablePort(port) {
+function findAvailablePort(port) {
     return new Promise((resolve, reject) => {
         const server = net.createServer();
 
