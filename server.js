@@ -5,6 +5,7 @@ import net from 'net';
 import compression from 'compression';
 import {createProxyMiddleware} from 'http-proxy-middleware';
 import dayjs from 'dayjs';
+import fs from 'fs';
 
 /**
  * @param {Object} config - 配置对象
@@ -32,21 +33,26 @@ function openService(config) {
         // 启用gzip
         app.use(compression());
 
-        app.use((req, res, next) => {
-            const date = dayjs().format('MM-DD HH:mm:ss');
-            console.log(`[${date}]  ${req.hostname}:${port}${req.url}`);
-            console.log('');
-            next();
-        });
-
         // 使用代理
         for (let [key, config] of Object.entries(proxy)) {
             const proxyMiddleware = createProxyMiddleware({
                 ...config,
-                logLevel: 'error',
+                logLevel: 'silent',
                 onProxyRes: (proxyRes, req) => {
                     proxyRes.headers['X-Real-Url'] = config.target + req.originalUrl;
+
+                    const date = dayjs().format('MM-DD HH:mm:ss');
+                    const logMessage = `[${date}] ${req.headers.host}${req.url}  \n - Ip: ${req.ip} - Proxy: ${config.target}`;
+
+                    fs.appendFile('C:/Users/Administrator/Desktop/server.log', `\n${logMessage}\n`, (err) => {
+                        if (err)  console.error('日志写入失败:', err);
+                    });
                 },
+                onError:err => {
+                    fs.appendFile('C:/Users/Administrator/Desktop/server.log', `\n${err}\n`, (err) => {
+                        if (err)  console.error('日志写入失败:', err);
+                    });
+                }
             });
             // noinspection JSCheckFunctionSignatures
             app.use(key, proxyMiddleware);
